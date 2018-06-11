@@ -35,6 +35,7 @@ def plot_image_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
             ax.set_xlim(xlim)
         if ylim is not None:
             ax.set_ylim(ylim)
+    return axs
 
 def plot_image_and_unc_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
                            xlim = None, ylim=None, parameter ="TeLAI", convertLAI=True, unc=False):
@@ -63,6 +64,7 @@ def plot_image_and_unc_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
             ax.set_xlim(xlim)
         if ylim is not None:
             ax.set_ylim(ylim)
+    return axs
 
 
 def plot_image_tseries_diff(filepath1, filepath2, axs, time_grid, vmin = -3, vmax = 3,
@@ -88,6 +90,7 @@ def plot_image_tseries_diff(filepath1, filepath2, axs, time_grid, vmin = -3, vma
             ax.set_xlim(xlim)
         if ylim is not None:
             ax.set_ylim(ylim)
+    return axs
 
 
 def plot_scatter_tseries(filepath1, filepath2, axs, time_grid, vmin = -1, vmax = 1.2):
@@ -115,6 +118,7 @@ def plot_scatter_tseries(filepath1, filepath2, axs, time_grid, vmin = -1, vmax =
         plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
         tif1 = None
         tif2 = None
+    return axs
 
 def plot_image_diff(filepath1, filepath2, date, ax, vmin = -2, vmax = 6,
                            xlim = None, ylim=None, parameter ="LAI"):
@@ -145,6 +149,7 @@ def plot_image_diff(filepath1, filepath2, date, ax, vmin = -2, vmax = 6,
         ax.set_xlim(xlim)
     if ylim is not None:
         ax.set_ylim(ylim)
+    return ax
 
 def plot_image(filepath, ax, date, xlim = None, ylim=None,
                vmin = -2, vmax = 6, parameter ="LAI", convertLAI="True"):
@@ -168,6 +173,7 @@ def plot_image(filepath, ax, date, xlim = None, ylim=None,
         ax.set_xlim(xlim)
     if ylim is not None:
         ax.set_ylim(ylim)
+    return ax
 
 
 '''
@@ -203,13 +209,17 @@ def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
               "w_vis":"leaf single scattering albedo in NIR",
               "x_vis":"leaf assymetry factor in NIR",
               "a_vis":"background albedo in vis"}
+    l_unc = data-unc
+    u_unc = data+unc
     if convertLAI is True:
         data = -2*np.log(data)
+        l_unc = -2.*np.log(l_unc)
+        u_unc = -2.*np.log(u_unc)
         labels["TeLAI"] = "LAI"
     ax.plot(np.array(dates), np.array(data), marker, label=labels[parameter])
-    ax.fill_between(np.array(dates), np.array(data) - np.array(unc),
-                    np.array(data)+np.array(unc),
+    ax.fill_between(np.array(dates), l_unc, u_unc,
                     color="0.8", alpha=0.5)
+    return ax
 
 
 
