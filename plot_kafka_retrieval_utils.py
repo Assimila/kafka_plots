@@ -194,29 +194,23 @@ def plot_pixel(filepath, date, ax, x = None, y=None, parameter ="LAI"):
     #plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
     tif = None
 '''
-def plot_pixel_tseries(filepath, ax, time_grid,
-                           x, y, parameter ="TeLAI"):
-    convertLAI = False
-    if parameter == "LAI":
-        convertLAI = True
-        parameter = "TeLAI"
-    pixel = []
-    for date in time_grid:
-        doy = date.timetuple().tm_yday
-        fname = "{}/{}_A2016{:0>3}.tif".format(filepath,parameter, doy)
-        #print fname
-        tif = gdal.Open(fname)
-        if tif is None: continue
-        var = tif.ReadAsArray()[x,y]
-        tif = None
-        if convertLAI is True:
-            var = -2*np.log(var)
-        pixel.append(var)
-    ax.plot(pixel) #, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
-    if convertLAI:
-        ax.set_title("LAI")
-    else: 
-        ax.set_title(parameter)
+def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
+                       marker = '-', convertLAI = False):
+    labels = {"TeLAI":"Transformed LAI",
+              "w_nir":"leaf single scattering albedo in NIR",
+              "x_nir":"leaf assymetry factor in NIR",
+              "a_nir":"background albedo in NIR",
+              "w_vis":"leaf single scattering albedo in NIR",
+              "x_vis":"leaf assymetry factor in NIR",
+              "a_vis":"background albedo in vis"}
+    if convertLAI is True:
+        data = -2*np.log(data)
+        labels["TeLAI"] = "LAI"
+    ax.plot(np.array(dates), np.array(data), marker, label=labels[parameter])
+    ax.fill_between(np.array(dates), np.array(data) - np.array(unc),
+                    np.array(data)+np.array(unc),
+                    color="0.8", alpha=0.5)
+
 
 
 
