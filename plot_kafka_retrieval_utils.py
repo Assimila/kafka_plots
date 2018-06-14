@@ -172,7 +172,7 @@ def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
 
 
 
-def extract_pixel(filepath, x,y, params=None, outfile=None):
+def extract_pixel(filepath, year, x,y, params=None, outfile=None):
     path=Path(filepath)
     if params == None:
         params=["TeLAI", "w_nir", "x_nir", "a_nir",
@@ -189,7 +189,7 @@ def extract_pixel(filepath, x,y, params=None, outfile=None):
         tseries = []
         uncertainty = []
         
-        files = np.sort([f for f in path.glob(f"{param}_A2017???.tif")])
+        files = np.sort([f for f in path.glob(f"{param}_A{year}???.tif")])
         for f in files:
             g = gdal.Open(f.as_posix())
             if param == params[0]:
@@ -201,7 +201,7 @@ def extract_pixel(filepath, x,y, params=None, outfile=None):
             d = g.ReadAsArray()[x,y]
             tseries.append(d)
 
-        files = np.sort([f for f in path.glob(f"{param}_A2017???_unc.tif")])
+        files = np.sort([f for f in path.glob(f"{param}_A{year}???_unc.tif")])
         for f in files:
             g = gdal.Open(f.as_posix())
             d = g.ReadAsArray()[x,y]
