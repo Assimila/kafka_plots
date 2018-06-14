@@ -8,75 +8,70 @@ from pathlib import Path
 cmap_s = plt.cm.viridis
 cmap_d = plt.cm.RdBu_r
 
-def plot_image_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
-                           xlim = None, ylim=None, parameter ="TeLAI", convertLAI=False, unc=False):
-    for ax, date in zip(axs, time_grid):
-        doy = date.timetuple().tm_yday
-        year = date.year
-        if unc:
-            fname = "{}/{}_A{}{:0>3}_unc.tif".format(filepath,parameter,year, doy)
-            convertLAI = False # There is no code to correctly convert LAI uncertainty yet
-        else:
-            fname = "{}/{}_A{}{:0>3}.tif".format(filepath,parameter,year, doy)
-        print(fname)
-        tif = gdal.Open(fname)
-        if tif is None: 
-            print("No image")
-            continue
-        var = tif.ReadAsArray()
-        if convertLAI:# is True and parameter == "TeLAI":
-            var = -2*np.log(var)
-            #var = np.exp(-0.5*var)
-        im = ax.imshow(var, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
-        ax.set_title(date.date())
-        plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
-        tif = None
-        if xlim is not None:
-            ax.set_xlim(xlim)
-        if ylim is not None:
-            ax.set_ylim(ylim)
-    return axs
+def filename(filepath,parameter,date, extension='tif', unc = False):
+    doy = date.timetuple().tm_yday
+    year = date.year
+    if unc:
+        fname = "{}/{}_A{}{:0>3}_unc.{}".format(filepath,parameter,
+                                                year, doy, extension)
+    else:
+        fname = "{}/{}_A{}{:0>3}.{}".format(filepath,parameter,year, doy, extension)
+    return fname
 
-def plot_image_and_unc_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
-                           xlim = None, ylim=None, parameter ="TeLAI", convertLAI=True, unc=False):
+
+def transform_LAI(t_LAI):
+    return -2*np.log(t_LAI)
+
+
+def plot_image(filepath, ax, date, vmin = -2, vmax = 6,
+               xlim = None, ylim=None,parameter =" TeLAI",
+               convertLAI="True", unc=False):
+
+    fname = filename(filepath,parameter, date, extension='tif', unc=unc)
+    print(fname)
+    tif = gdal.Open(fname)
+    if tif is None: ## need to raise an error here
+        raise ValueError("Image not found {}".format(fname))
+    var = tif.ReadAsArray()
+    if convertLAI is True:# and parameter == "TeLAI":
+        var = transform_LAI(var)
+    im = ax.imshow(var, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
+    if convertLAI and (parameter == "TeLAI" or parameter == "lai"):
+        ax.set_title("LAI {}".format(date.date()))
+    else:
+        ax.set_title(parameter.format(date.date()))
+    plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    return ax
+
+
+def plot_image_tseries(filepath, axs, time_grid, vmin = -2, vmax = 6,
+                           xlim = None, ylim=None, parameter ="TeLAI",
+                       convertLAI=False, unc=False):
     for ax, date in zip(axs, time_grid):
-        doy = date.timetuple().tm_yday
-        year = date.year
-        if unc:
-            fname = "{}/{}_A{}{:0>3}_unc.tif".format(filepath,parameter,year, doy)
-            convertLAI = False # There is no code to correctly convert LAI uncertainty yet
-        else:
-            fname = "{}/{}_A{}{:0>3}.tif".format(filepath,parameter,year, doy)
-        print(fname)
-        tif = gdal.Open(fname)
-        if tif is None: 
-            print("No image")
+        try:
+            plot_image(filepath, ax, date, vmin=vmin, vmax=vmax,
+                       xlim=xlim, ylim=ylim, parameter=parameter,
+                       convertLAI=convertLAI, unc=unc)
+        except ValueError as e:
+            print(e)
             continue
-        var = tif.ReadAsArray()
-        if convertLAI is True:# and parameter == "TeLAI":
-            var = -2*np.log(var)
-            #var = np.exp(-0.5*var)https://www.longtallsally.com/point-zero/c
-        im = ax.imshow(var, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
-        ax.set_title(date)
-        plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
-        tif = None
-        if xlim is not None:
-            ax.set_xlim(xlim)
-        if ylim is not None:
-            ax.set_ylim(ylim)
     return axs
 
 
 def plot_image_tseries_diff(filepath1, filepath2, axs, time_grid, vmin = -3, vmax = 3,
                            xlim = None, ylim=None):
+    # This has not been updated in a while...
     for ax, date in zip(axs, time_grid):
         doy = date.timetuple().tm_yday
-        fname = "{}/TeLAI_A2016{:0>3}.tif".format(filepath1, doy)
-        #print fname
+        fname = filename(filepath1 ,parameter, date, extension='tif', unc=unc)
         tif1 = gdal.Open(fname)
         if tif1 is None: continue
         LAI1 = -2*np.log(tif1.ReadAsArray())
-        fname = "{}/TeLAI_A2016{:0>3}.tif".format(filepath2, doy)
+        fname = filename(filepath2 ,parameter, date, extension='tif', unc=unc)
         #print fname
         tif2 = gdal.Open(fname)
         if tif2 is None: continue
@@ -95,6 +90,7 @@ def plot_image_tseries_diff(filepath1, filepath2, axs, time_grid, vmin = -3, vma
 
 def plot_scatter_tseries(filepath1, filepath2, axs, time_grid, vmin = -1, vmax = 1.2):
     for ax, date in zip(axs, time_grid):
+    # This has not been updated in a while...
         doy = date.timetuple().tm_yday
         fname = "{}/TeLAI_A2016{:0>3}.tif".format(filepath1, doy)
         #print fname
@@ -122,6 +118,7 @@ def plot_scatter_tseries(filepath1, filepath2, axs, time_grid, vmin = -1, vmax =
 
 def plot_image_diff(filepath1, filepath2, date, ax, vmin = -2, vmax = 6,
                            xlim = None, ylim=None, parameter ="LAI"):
+    # This has not been updated in a while...
     convertLAI = False
     if parameter == "LAI":
         convertLAI = True
@@ -151,55 +148,7 @@ def plot_image_diff(filepath1, filepath2, date, ax, vmin = -2, vmax = 6,
         ax.set_ylim(ylim)
     return ax
 
-def plot_image(filepath, ax, date, xlim = None, ylim=None,
-               vmin = -2, vmax = 6, parameter ="LAI", convertLAI="True"):
-    doy = date.timetuple().tm_yday
-    year = date.year
-    fname = "{}/{}_A{}{:0>3}.tif".format(filepath,parameter,year, doy)
-    #print fname
-    tif = gdal.Open(fname)
-    var = tif.ReadAsArray()
-    if convertLAI and parameter == "TeLAI":
-        print("converting")
-        var = -2*np.log(var)
-    im = ax.imshow(var, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
-    if convertLAI and parameter == "TeLAI":
-        ax.set_title("LAI {}".format(date.date()))
-    else: 
-        ax.set_title(parameter)
-    plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
-    tif = None
-    if xlim is not None:
-        ax.set_xlim(xlim)
-    if ylim is not None:
-        ax.set_ylim(ylim)
-    return ax
 
-
-'''
-def plot_pixel(filepath, date, ax, x = None, y=None, parameter ="LAI"):
-    convertLAI = False
-    if parameter == "LAI":
-        convertLAI = True
-        parameter = "TeLAI"
-    doy = date.timetuple().tm_yday
-    fname = "{}/{}_A2016{:0>3}.tif".format(filepath,parameter, doy)
-    #print fname
-    tif = gdal.Open(fname)
-    var = tif.ReadAsArray()
-    if convertLAI is True:
-        var = -2*np.log(var)
-    
-    ax.plot(var[x,y])
-    
-    #im = ax.imshow(var, vmin=vmin, vmax=vmax, cmap=cmap_s, interpolation = 'none')
-    if convertLAI:
-        ax.set_title("LAI")
-    else: 
-        ax.set_title(parameter)
-    #plt.colorbar(im, ax=ax,fraction=0.046, pad=0.04)
-    tif = None
-'''
 def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
                        marker = '-', convertLAI = False):
     labels = {"TeLAI":"Transformed LAI",
@@ -220,8 +169,6 @@ def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
     ax.fill_between(np.array(dates), l_unc, u_unc,
                     color="0.8", alpha=0.5)
     return ax
-
-
 
 
 
