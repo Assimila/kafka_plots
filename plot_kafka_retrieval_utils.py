@@ -163,10 +163,10 @@ def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
     labels = {"TeLAI":"Transformed LAI",
               "lai":"Transformed LAI",
               "w_nir":"leaf single scattering albedo in NIR",
-              "x_nir":"leaf asymetry factor in NIR",
+              "x_nir":"leaf asymmetry factor in NIR",
               "a_nir":"background albedo in NIR",
               "w_vis":"leaf single scattering albedo in NIR",
-              "x_vis":"leaf asymetry factor in NIR",
+              "x_vis":"leaf asymmetry factor in NIR",
               "a_vis":"background albedo in vis"}
     l_unc = data-unc
     u_unc = data+unc
