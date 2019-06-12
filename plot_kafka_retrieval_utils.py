@@ -188,6 +188,56 @@ def plot_pixel_tseries(ax, data, unc, dates, parameter ="TeLAI",
     return ax
 
 
+def plot_pixel_tseries_s2(ax, data, unc, dates, parameter="lai",
+                          marker='-', convertLAI=False, error="shading",
+                          line='None', label='Auto'):
+    labels = {"lai": "Transformed LAI",
+              'n': "n",
+              'cab': "cab",
+              'car': "car",
+              'cbrown': "cbrown",
+              'cw': "cw",
+              'cm': "cm",
+              'ala': "ala",
+              'bsoil': 'bsoil',
+              'psoil': "psoil"}
+    # try:
+    # for d,u, l,t, td  in zip(data, unc, (data-unc), -2.*np.log(data-unc), -2.*np.log(data)):
+    #    if not np.isnan(t):
+    #        print (d,u,l,t, td)
+    l_unc = data + np.sqrt(unc)
+    # except ValueError:
+    #    print ("waring - unc calc error {}".format(unc))
+    #    l_unc = data
+    # try:
+    u_unc = data - np.sqrt(unc)
+    # except ValueError:
+    #    print ("waring - unc calc error {}".format(unc))
+    #    u_unc = data
+    if convertLAI is True:
+        data = -2 * np.log(data)
+        l_unc = -2. * np.log(l_unc)
+        u_unc = -2. * np.log(u_unc)
+        l_unc[np.isnan(l_unc)] = 10
+        labels["lai"] = "LAI"
+    maskprior = np.where(abs(data - 4.0) > 0.0000001)
+    if label == 'Auto': label = labels[parameter]
+    if error == "bar":
+        uncs = np.array([data[maskprior] - l_unc[maskprior], u_unc[maskprior] - data[maskprior]])
+        p = ax.errorbar(np.array(np.array(dates)[maskprior]), np.array(data)[maskprior],
+                        yerr=uncs, linestyle=line,
+                        marker=marker, label=label)  # , color = 'k')
+    else:
+        p = ax.plot(np.array(np.array(dates)[maskprior]), np.array(data)[maskprior],
+                    marker=marker, linestyle=line, label=label)
+    if error == "shading":
+        color = (p[0].get_color())
+        ax.fill_between(np.array(dates), l_unc, u_unc,
+                        color=color, alpha=0.4, label='_nolegend_')
+
+    ax.set_title(labels[parameter])
+    return ax
+
 
 def extract_pixel(filepath, year, x,y, params=None, outfile=None):
     path=Path(filepath)
@@ -195,13 +245,14 @@ def extract_pixel(filepath, year, x,y, params=None, outfile=None):
         params=["TeLAI", "w_nir", "x_nir", "a_nir",
                 "w_vis", "x_vis", "a_vis"]
 
-
+    if outfile == None:
         outfile = filepath+"/pixel_{}_{}.pkl".format(x,y)
     print("saving output to {}".format(outfile))
 
     data = {}
     uncs = {}
     dates =[]
+    doys = []
     for param in params:
         tseries = []
         uncertainty = []
@@ -210,7 +261,10 @@ def extract_pixel(filepath, year, x,y, params=None, outfile=None):
         for f in files:
             g = gdal.Open(f.as_posix())
             if param == params[0]:
-                dates.append(int(dt.datetime.strptime(f.name.split("_")[len(param.split("_"))][1:],"%Y%j.tif").strftime("%j")))
+                # Below gives day of year as an int.
+                doys.append(int(dt.datetime.strptime(f.name.split("_")[len(param.split("_"))][1:],"%Y%j.tif").strftime("%j")))
+                # Below gives a datetime object
+                dates.append(dt.datetime.strptime(f.name.split("_")[len(param.split("_"))][1:],"%Y%j.tif"))
                 #print(dates)
                 #print(len(param.split("_")))
             d = g.ReadAsArray()[y,x]
@@ -225,10 +279,28 @@ def extract_pixel(filepath, year, x,y, params=None, outfile=None):
         data[param] = np.array(tseries)
         uncs[param] = np.array(uncertainty)
         
-        pickle.dump((data, uncs, dates), open(outfile, "wb"))
+        pickle.dump((data, uncs, dates, doys), open(outfile, "wb"))
 
-    return data, uncs, dates
+    return data, uncs, dates, doys
     
 
-
+def get_pixel(filepath, year, x, y, params = None, recreate_file = False):
+    """
+    Get retrieved parameters and uncertainties for a single pixel
+    This will open the data from a pickle file if it exists, otherwise
+    it calls extract_pixel, which will get the data and also store a pickle file
+    for next time.
+    """
+    if params == None:
+        params = ['n', 'cab', 'car', 'cbrown', 'cw', 'cm',
+                  'lai', 'ala', 'bsoil', 'psoil']
+    file = filepath+"/pixel_{}_{}.pkl".format(x,y)
+    try:
+        data, uncs, dates, doys = pickle.load(open(file, 'rb'))
+    except (FileNotFoundError, ValueError):
+        recreate_file = True
+    if recreate_file:
+        print('creating '+file)
+        data, uncs, dates, doys = extract_pixel(filepath, year, x, y, params=params, outfile=file)
+    return data, uncs, dates, doys
 
